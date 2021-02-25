@@ -55,26 +55,26 @@ template <template <typename> typename predicate_t, typename tuple_t,
           size_t kCounter, size_t... kIndices>
 struct TupleFilterImpl {
   static constexpr auto kIndex = kCounter - 1u;
-  static constexpr bool kElementSelection =
+  static constexpr bool kPredicateValue =
       predicate_t<std::tuple_element_t<kIndex, tuple_t>>::value;
-  // recursive type if the element would be selected
-  using SelectElement = typename TupleFilterImpl<predicate_t, tuple_t, kIndex,
-                                                 kIndex, kIndices...>::Type;
-  // recursive type if the element would be skipped
-  using SkipElement =
-      typename TupleFilterImpl<predicate_t, tuple_t, kIndex, kIndices...>::Type;
-  // select recursive type based on the selector decision
-  using Type =
-      std::conditional_t<kElementSelection, SelectElement, SkipElement>;
+  // index sequence if the element would be selected
+  using SelectIndices = typename TupleFilterImpl<predicate_t, tuple_t, kIndex,
+                                                 kIndex, kIndices...>::Indices;
+  // index sequence if the element would be skipped
+  using SkipIndices = typename TupleFilterImpl<predicate_t, tuple_t, kIndex,
+                                               kIndices...>::Indices;
+  // index sequence type based on the predicate decision
+  using Indices =
+      std::conditional_t<kPredicateValue, SelectIndices, SkipIndices>;
 };
 template <template <typename> typename predicate_t, typename tuple_t,
           size_t... kIndices>
 struct TupleFilterImpl<predicate_t, tuple_t, 0u, kIndices...> {
-  using Type = std::index_sequence<kIndices...>;
+  using Indices = std::index_sequence<kIndices...>;
 };
 template <template <typename> typename predicate_t, typename tuple_t>
-using TupleFilter = typename TupleFilterImpl<predicate_t, tuple_t,
-                                             std::tuple_size_v<tuple_t>>::Type;
+using TupleFilter =
+    TupleFilterImpl<predicate_t, tuple_t, std::tuple_size_v<tuple_t>>;
 
 /// Check if the given type is a point-like process.
 ///
@@ -101,9 +101,11 @@ struct IsContinuousProcess {
 };
 
 template <typename processes_t>
-using ContinuousIndices = TupleFilter<IsContinuousProcess, processes_t>;
+using ContinuousIndices =
+    typename TupleFilter<IsContinuousProcess, processes_t>::Indices;
 template <typename processes_t>
-using PointLikeIndices = TupleFilter<IsPointLikeProcess, processes_t>;
+using PointLikeIndices =
+    typename TupleFilter<IsPointLikeProcess, processes_t>::Indices;
 
 }  // namespace detail
 
